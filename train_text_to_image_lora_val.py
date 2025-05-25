@@ -4,6 +4,7 @@ import math
 import os
 import random
 import shutil
+from transformers import CLIPProcessor, CLIPModel
 from pathlib import Path
 
 import datasets
@@ -579,6 +580,11 @@ def main():
                     logger.info(f"Running validation at step {global_step}")
                     if args.calculate_clip_score and clip_model is None:
                         logger.warning("CLIP model not loaded, skipping CLIP score calculation.")
+                    pipeline = DiffusionPipeline.from_pretrained(
+                    args.pretrained_model_name_or_path,
+                    unet=accelerator.unwrap_model(unet),
+                    torch_dtype=weight_dtype,
+                    )
                     images = log_validation(
                         pipeline, args, accelerator, epoch,
                         clip_model, clip_processor # Truyền vào
@@ -586,7 +592,8 @@ def main():
                     lora_path = os.path.join(args.output_dir, f"lora-weights-{global_step}")
                     unwrapped_unet = accelerator.unwrap_model(unet)
                     save_lora_weights(lora_path, unwrapped_unet)
-                
+                    del pipeline
+                    torch.cuda.empty_cache()
             if global_step >= args.max_train_steps:
                 break
 
